@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+} from '@/components/ui/dropdown-menu';
+import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 interface HeaderUser {
@@ -26,7 +26,9 @@ export function Header() {
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createBrowserSupabaseClient();
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
       if (authUser) {
         setUser({
           displayName: authUser.user_metadata?.name,
@@ -58,7 +60,15 @@ export function Header() {
   const router = useRouter();
 
   const handleAccount = useCallback(() => {
-    router.push("/account");
+    router.push('/account');
+  }, [router]);
+
+  const handleJobs = useCallback(() => {
+    router.push('/jobs');
+  }, [router]);
+
+  const handleHome = useCallback(() => {
+    router.push('/');
   }, [router]);
 
   const handleLogout = useCallback(async () => {
@@ -70,7 +80,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-20 items-center justify-between pl-8 pr-8">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 cursor-pointer" onClick={handleHome}>
           <Image
             src="/payai-logo.svg"
             alt="PayAI Logo"
@@ -83,28 +93,32 @@ export function Header() {
             <span className="text-sm text-muted-foreground">Hire any agent for any task</span>
           </div>
         </div>
-
         {/* Profile Button (Avatar) with Dropdown */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ">
           {loading ? (
             <div className="animate-pulse w-10 h-10 rounded-full bg-muted" />
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Account">
+                <Button className="cursor-pointer" variant="ghost" size="icon" aria-label="Account">
                   <Avatar>
-                    <AvatarImage src={user?.avatarUrl || "/placeholder-avatar.png"} alt="User avatar" />
+                    <AvatarImage
+                      src={user?.avatarUrl || '/placeholder-avatar.png'}
+                      alt="User avatar"
+                    />
                     <AvatarFallback>{initials.toUpperCase()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <div className="px-4 py-2">
+                <div className="px-4 py-2 ">
                   <div className="font-medium">{user?.displayName}</div>
                   <div className="text-xs text-muted-foreground">{user?.email}</div>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleAccount}>Account</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleJobs}>Jobs</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
               </DropdownMenuContent>
@@ -114,4 +128,4 @@ export function Header() {
       </div>
     </header>
   );
-} 
+}

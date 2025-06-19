@@ -55,12 +55,17 @@ export default function AccountPage() {
   const [newTokenValue, setNewTokenValue] = useState<string | null>(null);
   const [isCreatingToken, setIsCreatingToken] = useState(false);
   const [isRevokingToken, setIsRevokingToken] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const supabase = createBrowserSupabaseClient();
 
   const fetchUserProfile = useCallback(async () => {
     try {
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+        error: userError,
+      } = await supabase.auth.getUser();
       if (userError) throw userError;
 
       if (authUser) {
@@ -129,27 +134,52 @@ export default function AccountPage() {
     }
   }, [newTokenName, fetchTokens]);
 
-  const revokeToken = useCallback(async (tokenId: string) => {
-    setIsRevokingToken(true);
-    try {
-      const response = await fetch(`/api/tokens/${tokenId}/revoke`, {
-        method: 'POST',
-      });
+  const revokeToken = useCallback(
+    async (tokenId: string) => {
+      setIsRevokingToken(true);
+      try {
+        const response = await fetch(`/api/tokens/${tokenId}/revoke`, {
+          method: 'POST',
+        });
 
-      if (!response.ok) throw new Error('Failed to revoke token');
-      await fetchTokens();
-      toast.success('Token revoked successfully');
-    } catch (error) {
-      console.error('Error revoking token:', error);
-      toast.error('Failed to revoke token');
-    } finally {
-      setIsRevokingToken(false);
-    }
-  }, [fetchTokens]);
+        if (!response.ok) throw new Error('Failed to revoke token');
+        await fetchTokens();
+        toast.success('Token revoked successfully');
+      } catch (error) {
+        console.error('Error revoking token:', error);
+        toast.error('Failed to revoke token');
+      } finally {
+        setIsRevokingToken(false);
+      }
+    },
+    [fetchTokens]
+  );
 
   const copyToClipboard = useCallback((text: string, feedback?: string) => {
     navigator.clipboard.writeText(text);
     toast.success(feedback || 'Copied to clipboard');
+  }, []);
+
+  const handleSyncProfile = useCallback(async () => {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const response = await fetch('/api/account', { method: 'PUT' });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to sync profile');
+      }
+      const data = await response.json();
+      setUser(prev =>
+        prev ? { ...prev, displayName: data.displayName, avatarUrl: data.avatarUrl } : prev
+      );
+      toast.success('Profile synced with Twitter!');
+    } catch (error: any) {
+      setSyncError(error.message || 'Failed to sync profile');
+      toast.error(error.message || 'Failed to sync profile');
+    } finally {
+      setSyncing(false);
+    }
   }, []);
 
   if (isLoading) {
@@ -204,6 +234,20 @@ export default function AccountPage() {
             <CardDescription>Your account information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Sync Profile With Twitter Button */}
+            <Button
+              onClick={handleSyncProfile}
+              disabled={syncing}
+              className="w-full sm:w-auto"
+              aria-busy={syncing}
+            >
+              {syncing ? 'Syncing...' : 'Sync Profile With Twitter'}
+            </Button>
+            {syncError && (
+              <div className="text-red-600 text-sm" role="alert">
+                {syncError}
+              </div>
+            )}
             <div>
               <Label>Email</Label>
               <p className="text-sm text-gray-600">{user?.email}</p>
@@ -235,7 +279,7 @@ export default function AccountPage() {
               <Input
                 placeholder="Enter token name"
                 value={newTokenName}
-                onChange={(e) => setNewTokenName(e.target.value)}
+                onChange={e => setNewTokenName(e.target.value)}
               />
               <Button onClick={createToken} disabled={isCreatingToken}>
                 Create Token
@@ -248,7 +292,8 @@ export default function AccountPage() {
                 <DialogHeader>
                   <DialogTitle>Access Token Created</DialogTitle>
                   <DialogDescription>
-                    Make sure to <b>copy your token now</b>. You won&apos;t be able to see it again after you close this window.
+                    Make sure to <b>copy your token now</b>. You won&apos;t be able to see it again
+                    after you close this window.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -258,7 +303,9 @@ export default function AccountPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => newTokenValue && copyToClipboard(newTokenValue, 'Token copied to clipboard')}
+                    onClick={() =>
+                      newTokenValue && copyToClipboard(newTokenValue, 'Token copied to clipboard')
+                    }
                     className="self-end sm:self-center"
                   >
                     <Copy className="h-4 w-4" />
@@ -269,7 +316,7 @@ export default function AccountPage() {
 
             {/* Token List */}
             <div className="space-y-4">
-              {tokens.map((token) => (
+              {tokens.map(token => (
                 <div
                   key={token.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
@@ -315,4 +362,4 @@ export default function AccountPage() {
       </div>
     </>
   );
-} 
+}
